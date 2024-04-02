@@ -5,7 +5,7 @@
         <MudExpansionPanels>
             <MudExpansionPanel Text="Setup" MaxHeight="1000" @bind-IsExpanded="isSetupAreaOpen" >
                 <MudStack Row="true">
-                    <MudItem xs="6" sm="6" md="6">
+                    <MudItem xs="7" sm="7" md="7">
                         <MudSelect T="string" @bind-Value="SelectedScene" Label="Scene" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
                             @foreach (var item in FreeChatScenes.SceneList)
                             {
@@ -15,7 +15,7 @@
                             }
                         </MudSelect>
                     </MudItem>
-                    <MudItem xs="6" sm="6" md="6">
+                    <MudItem xs="3" sm="3" md="3">
                         <MudSelect T="string" @bind-Value="SelectedFeedbackLang" Label="Feedback Langage" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
                             <!-- LanguageListの値を選択肢として表示 -->
                             @foreach (var item in FeedbackLang.LanguageList)
@@ -26,7 +26,7 @@
                             }
                         </MudSelect>
                     </MudItem>
-                    <MudItem>
+                    <MudItem  xs="2" sm="2" md="2">
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="StartChat">Start chatting</MudButton>
                     </MudItem>
                 </MudStack>
@@ -37,13 +37,55 @@
 
     <MudItem xs="6" sm="6" md="6">
         <!-- chat are  https://github.com/iammukeshm/BlazorChat/blob/master/BlazorChat/Client/Pages/Chat.razor-->
-        <MudPaper Elevation="2" Class="pa-4" Style="height: 200px;"></MudPaper>
+        <MudPaper Elevation="25" Class="pa-4 flex-grow-1">
+            <MudToolBar Dense="true">
+                <MudText Typo="Typo.h6">Chat</MudText>
+            </MudToolBar>
+            <div class="d-flex flex-column px-4" style="max-height:65vh;min-height:65vh; overflow:scroll;" id="chatContainer">
+                @foreach (var message in messages)
+                {
+                    <div class="d-flex flex-row my-1">
+                        <div>
+                            <MudText Typo="Typo.body2" Style=" padding: 15px;background-color: var(--mud-palette-background-grey);border-radius: 5px;margin-top:5px">@message</MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+            <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
+                <!--
+                <MudTextField T="string" Placeholder="Enter your message..."DisableUnderLine="true" Class="mt-n2 mx-4"
+                            @bind-Value="CurrentMessage" For="@(()=> CurrentMessage)" />
+                <MudButton OnClick="SubmitAsync" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>-->
+                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitAsync" />
+            </MudPaper>
+        </MudPaper>
     </MudItem>
 
 
 
     <MudItem xs="6" sm="6" md="6">
-        <!-- feedback are -->
+        <MudPaper Elevation="25" Class="pa-4 flex-grow-1">
+            <MudToolBar Dense="true">
+                <MudText Typo="Typo.h6">Feedback</MudText>
+            </MudToolBar>
+            <div class="d-flex flex-column px-4" style="max-height:65vh;min-height:65vh; overflow:scroll;" id="chatContainer">
+                @foreach (var message in messages)
+                {
+                    <div class="d-flex flex-row my-1">
+                        <div>
+                            <MudText Typo="Typo.body2" Style=" padding: 15px;background-color: var(--mud-palette-background-grey);border-radius: 5px;margin-top:5px">@message</MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+            <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
+                <!--
+                <MudTextField T="string" Placeholder="Enter your message..."DisableUnderLine="true" Class="mt-n2 mx-4"
+                            @bind-Value="CurrentMessage" For="@(()=> CurrentMessage)" />
+                <MudButton OnClick="SubmitAsync" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>-->
+                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitAsync" />
+            </MudPaper>
+        </MudPaper>
     </MudItem>
 </MudGrid>
 
@@ -52,6 +94,8 @@
     private string SelectedScene = FreeChatScenes.SceneList.First().SceneId;
     private string SelectedFeedbackLang = FeedbackLang.LanguageList.First().Key;
     private bool isSetupAreaOpen = true;
+    private string CurrentMessage = "string.Empty";
+    private List<string> messages = new List<string>() { "Hello", "How are you?" };
     
     private void StartChat()
     {
@@ -60,4 +104,11 @@
         SelectedFeedbackLang.ToString();
         ;
     }
+
+    private async Task SubmitAsync()
+    {
+        // ここでメッセージを送信する処理を書く
+        CurrentMessage.ToString();
+    }
+
 }
