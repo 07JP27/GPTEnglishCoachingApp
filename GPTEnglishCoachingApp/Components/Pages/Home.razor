@@ -1,7 +1,63 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+ <MudGrid>
+    <MudItem xs="12" sm="12" md="12">
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Setup" MaxHeight="1000" @bind-IsExpanded="isSetupAreaOpen" >
+                <MudStack Row="true">
+                    <MudItem xs="6" sm="6" md="6">
+                        <MudSelect T="string" @bind-Value="SelectedScene" Label="Scene" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var item in FreeChatScenes.SceneList)
+                            {
+                                <MudSelectItem Value="@item.SceneId">
+                                    @item.SceneName
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="6" sm="6" md="6">
+                        <MudSelect T="string" @bind-Value="SelectedFeedbackLang" Label="Feedback Langage" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            <!-- LanguageListの値を選択肢として表示 -->
+                            @foreach (var item in FeedbackLang.LanguageList)
+                            {
+                                <MudSelectItem Value="@item.Key">
+                                    @item.Value
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="StartChat">Start chatting</MudButton>
+                    </MudItem>
+                </MudStack>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudItem>
 
-<h1>Hello, world!</h1>
 
-Welcome to your new app.
+    <MudItem xs="6" sm="6" md="6">
+        <!-- chat are  https://github.com/iammukeshm/BlazorChat/blob/master/BlazorChat/Client/Pages/Chat.razor-->
+        <MudPaper Elevation="2" Class="pa-4" Style="height: 200px;"></MudPaper>
+    </MudItem>
+
+
+
+    <MudItem xs="6" sm="6" md="6">
+        <!-- feedback are -->
+    </MudItem>
+</MudGrid>
+
+
+@code {
+    private string SelectedScene = FreeChatScenes.SceneList.First().SceneId;
+    private string SelectedFeedbackLang = FeedbackLang.LanguageList.First().Key;
+    private bool isSetupAreaOpen = true;
+    
+    private void StartChat()
+    {
+        // ここでチャットを開始する処理を書く
+        SelectedScene.ToString();
+        SelectedFeedbackLang.ToString();
+        ;
+    }
+}
