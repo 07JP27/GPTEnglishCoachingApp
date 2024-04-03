@@ -1,0 +1,34 @@
+<MudCard Outlined="true" style="@($"border-color:{GetColor()};")">
+    <MudCardContent style="padding:4px 12px">
+        <MudText Typo="Typo.body1" style="@($"color:{GetColor()};")">@GetLabel()</MudText>
+        <MudText Typo="Typo.body2">@Content</MudText>
+    </MudCardContent>
+</MudCard>
+
+@code{
+    [Parameter]
+    public FeedbackTypeEnum Type { get; set; }
+
+    [Parameter]
+    public string Content { get; set; } = string.Empty;
+
+    private string GetColor()
+    {
+        return Type switch
+        {
+            FeedbackTypeEnum.Grammar => Colors.DeepOrange.Darken3,
+            FeedbackTypeEnum.Vocabulary => Colors.Blue.Darken1,
+            _ => Colors.Lime.Darken3
+        };
+    }
+
+    public string GetLabel()
+    {
+        return Type switch
+        {
+            FeedbackTypeEnum.Grammar => Enum.GetName(typeof(FeedbackTypeEnum), FeedbackTypeEnum.Grammar)??string.Empty,
+            FeedbackTypeEnum.Vocabulary => Enum.GetName(typeof(FeedbackTypeEnum), FeedbackTypeEnum.Vocabulary)??string.Empty,
+            _ => Enum.GetName(typeof(FeedbackTypeEnum), FeedbackTypeEnum.Other)??string.Empty
+        };
+    }
+}

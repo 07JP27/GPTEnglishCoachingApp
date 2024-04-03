@@ -1,4 +1,6 @@
 ﻿@page "/"
+@using GPTEnglishCoachingApp.Models;
+@using Azure.AI.OpenAI;
 
  <MudGrid>
     <MudItem xs="12" sm="12" md="12">
@@ -27,7 +29,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem  xs="2" sm="2" md="2">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="StartChat">Start chatting</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="InitializeChat">Start chatting</MudButton>
                     </MudItem>
                 </MudStack>
             </MudExpansionPanel>
@@ -44,11 +46,21 @@
             <div class="d-flex flex-column px-4" style="max-height:65vh;min-height:65vh; overflow:scroll;" id="chatContainer">
                 @foreach (var message in messages)
                 {
-                    <div class="d-flex flex-row my-1">
-                        <div>
-                            <MudText Typo="Typo.body2" Style=" padding: 15px;background-color: var(--mud-palette-background-grey);border-radius: 5px;margin-top:5px">@message</MudText>
+                    if(message.Role == ChatRole.User)
+                    {
+                        <div class="d-flex flex-row my-1">
+                            <div>
+                                <MudText Typo="Typo.body1" Style="@($"padding:15px; background-color:{Colors.Teal.Darken2}; border-radius:5px; margin-top:5px;")">@(((ChatRequestUserMessage)message).Content)</MudText>
+                            </div>
                         </div>
-                    </div>
+                    } else if(message.Role == ChatRole.Assistant)
+                    {
+                        <div class="d-flex flex-row my-1">
+                            <div>
+                                <MudText Typo="Typo.body1" Style=" padding: 15px; background-color:var(--mud-palette-background-grey); border-radius:5px; margin-top:5px;">@(((ChatRequestAssistantMessage)message).Content)</MudText>
+                            </div>
+                        </div>
+                    }
                 }
             </div>
             <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
@@ -56,7 +68,7 @@
                 <MudTextField T="string" Placeholder="Enter your message..."DisableUnderLine="true" Class="mt-n2 mx-4"
                             @bind-Value="CurrentMessage" For="@(()=> CurrentMessage)" />
                 <MudButton OnClick="SubmitAsync" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>-->
-                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitAsync" />
+                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitChatAsync" />
             </MudPaper>
         </MudPaper>
     </MudItem>
@@ -68,23 +80,16 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">Feedback</MudText>
             </MudToolBar>
-            <div class="d-flex flex-column px-4" style="max-height:65vh;min-height:65vh; overflow:scroll;" id="chatContainer">
-                @foreach (var message in messages)
+            <MudStack class="px-4" style="max-height:46vh;min-height:46vh; overflow:scroll;" >
+                @foreach (var feedback in feedbacks)
                 {
-                    <div class="d-flex flex-row my-1">
-                        <div>
-                            <MudText Typo="Typo.body2" Style=" padding: 15px;background-color: var(--mud-palette-background-grey);border-radius: 5px;margin-top:5px">@message</MudText>
-                        </div>
-                    </div>
+                    <FeedbackItem Type="feedback.Type" Content="@feedback.Content" />
                 }
-            </div>
-            <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
-                <!--
-                <MudTextField T="string" Placeholder="Enter your message..."DisableUnderLine="true" Class="mt-n2 mx-4"
-                            @bind-Value="CurrentMessage" For="@(()=> CurrentMessage)" />
-                <MudButton OnClick="SubmitAsync" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>-->
-                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitAsync" />
-            </MudPaper>
+            </MudStack>
+            <MudDivider />
+            <MudChart ChartType="ChartType.Donut" LegendPosition="Position.Right" Width="300px" Height="300px"
+                    InputData="@AggregatedFeedbacks" InputLabels="@AggregatedFeedbacksLabels">
+            </MudChart>
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -94,10 +99,33 @@
     private string SelectedScene = FreeChatScenes.SceneList.First().SceneId;
     private string SelectedFeedbackLang = FeedbackLang.LanguageList.First().Key;
     private bool isSetupAreaOpen = true;
-    private string CurrentMessage = "string.Empty";
-    private List<string> messages = new List<string>() { "Hello", "How are you?" };
+    private string CurrentMessage = string.Empty;
+
+    private List<ChatRequestMessage> messages = new List<ChatRequestMessage>(){
+        new ChatRequestSystemMessage("hoge"),
+        new ChatRequestUserMessage("fuga"),
+        new ChatRequestAssistantMessage("pijgawjgipwaej")
+    };
+
+    private List<Feedback> feedbacks = new List<Feedback>() {
+        new Feedback() { TargetMsgIndex = 0, Type = FeedbackTypeEnum.Vocabulary, Content = "Hello" },
+        new Feedback() { TargetMsgIndex = 1, Type = FeedbackTypeEnum.Grammar, Content = "How are you?" },
+        new Feedback() { TargetMsgIndex = 2, Type = FeedbackTypeEnum.Vocabulary, Content = "I'm fine, thank you." },
+        new Feedback() { TargetMsgIndex = 29, Type = FeedbackTypeEnum.Vocabulary, Content = "Good morning" },
+        new Feedback() { TargetMsgIndex = 30, Type = FeedbackTypeEnum.Grammar, Content = "Good afternoon" },
+        new Feedback() { TargetMsgIndex = 31, Type = FeedbackTypeEnum.Other, Content = "Good evening" },
+        new Feedback() { TargetMsgIndex = 32, Type = FeedbackTypeEnum.Vocabulary, Content = "Good night" }
+    };
+
+    private double[] AggregatedFeedbacks{
+        get => feedbacks.GroupBy(f => f.Type).Select(g => (double)g.Count()).ToArray();
+    }
+
+    private string[] AggregatedFeedbacksLabels{
+        get => feedbacks.GroupBy(f => f.Type).Select(g => g.Key.ToString()).ToArray();
+    }
     
-    private void StartChat()
+    private void InitializeChat()
     {
         // ここでチャットを開始する処理を書く
         SelectedScene.ToString();
@@ -105,10 +133,9 @@
         ;
     }
 
-    private async Task SubmitAsync()
+    private async Task SubmitChatAsync()
     {
         // ここでメッセージを送信する処理を書く
         CurrentMessage.ToString();
     }
-
 }
