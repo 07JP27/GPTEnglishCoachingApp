@@ -1,6 +1,8 @@
 ﻿@page "/"
 @using GPTEnglishCoachingApp.Models;
 @using Azure.AI.OpenAI;
+@inject OpenAIClient openAIClient;
+@inject ISnackbar Snackbar
 
  <MudGrid>
     <MudItem xs="12" sm="12" md="12">
@@ -29,7 +31,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem  xs="2" sm="2" md="2">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="InitializeChat">Start chatting</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="InitializeChatAsync">Start chatting</MudButton>
                     </MudItem>
                 </MudStack>
             </MudExpansionPanel>
@@ -64,10 +66,6 @@
                 }
             </div>
             <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
-                <!--
-                <MudTextField T="string" Placeholder="Enter your message..."DisableUnderLine="true" Class="mt-n2 mx-4"
-                            @bind-Value="CurrentMessage" For="@(()=> CurrentMessage)" />
-                <MudButton OnClick="SubmitAsync" StartIcon="@Icons.Material.Outlined.Send" Color="Color.Primary" ButtonType="ButtonType.Button">Send</MudButton>-->
                 <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitChatAsync" />
             </MudPaper>
         </MudPaper>
@@ -80,7 +78,7 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">Feedback</MudText>
             </MudToolBar>
-            <MudStack class="px-4" style="max-height:46vh;min-height:46vh; overflow:scroll;" >
+            <MudStack class="px-4" style="max-height:44vh;min-height:44vh; overflow:scroll;" >
                 @foreach (var feedback in feedbacks)
                 {
                     <FeedbackItem Type="feedback.Type" Content="@feedback.Content" />
@@ -101,11 +99,7 @@
     private bool isSetupAreaOpen = true;
     private string CurrentMessage = string.Empty;
 
-    private List<ChatRequestMessage> messages = new List<ChatRequestMessage>(){
-        new ChatRequestSystemMessage("hoge"),
-        new ChatRequestUserMessage("fuga"),
-        new ChatRequestAssistantMessage("pijgawjgipwaej")
-    };
+    private List<ChatRequestMessage> messages = new List<ChatRequestMessage>();
 
     private List<Feedback> feedbacks = new List<Feedback>() {
         new Feedback() { TargetMsgIndex = 0, Type = FeedbackTypeEnum.Vocabulary, Content = "Hello" },
@@ -125,17 +119,45 @@
         get => feedbacks.GroupBy(f => f.Type).Select(g => g.Key.ToString()).ToArray();
     }
     
-    private void InitializeChat()
+    private async Task InitializeChatAsync()
     {
         // ここでチャットを開始する処理を書く
-        SelectedScene.ToString();
-        SelectedFeedbackLang.ToString();
-        ;
+        messages.Clear();
+        messages.Add(new ChatRequestSystemMessage("Chat started."));
+        await CallChatCompletionAsync();
     }
 
     private async Task SubmitChatAsync()
     {
+        // messageにChatRequestSystemMessage型の値が含まれているかをチェックする
+        if (!messages.Any(m => m is ChatRequestSystemMessage))
+        {
+            Snackbar.Add("Select scene, feedback langage and click 'Start Chatting' button first.", Severity.Error);
+            return;
+        }
+
         // ここでメッセージを送信する処理を書く
-        CurrentMessage.ToString();
+        if (string.IsNullOrWhiteSpace(CurrentMessage))
+        {
+            Snackbar.Add("Please input your message.", Severity.Error);
+        }
+        messages.Add(new ChatRequestUserMessage(CurrentMessage));
+        CurrentMessage = string.Empty;
+        await CallChatCompletionAsync();
+    }
+
+    private async Task CallChatCompletionAsync()
+    {
+        var chatOptions = new ChatCompletionsOptions(
+        "gpt35-1106", 
+        messages);
+
+        var response = await openAIClient.GetChatCompletionsAsync(chatOptions);
+        var choice = response.Value.Choices.First();
+
+        if (choice.FinishReason == CompletionsFinishReason.Stopped)
+        {
+            messages.Add(new ChatRequestAssistantMessage(choice.Message.Content));
+        }
     }
 }
