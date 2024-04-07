@@ -1,8 +1,11 @@
 ﻿@page "/"
 @using GPTEnglishCoachingApp.Models;
 @using Azure.AI.OpenAI;
+@using Microsoft.Extensions.Options
+@using System.Text.Json
 @inject OpenAIClient openAIClient;
 @inject ISnackbar Snackbar
+@inject IOptions<AppConfig> appConfig
 
  <MudGrid>
     <MudItem xs="12" sm="12" md="12">
@@ -31,7 +34,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem  xs="2" sm="2" md="2">
-                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" OnClick="InitializeChatAsync">Start chatting</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeChatAsync">Start chatting</MudButton>
                     </MudItem>
                 </MudStack>
             </MudExpansionPanel>
@@ -40,6 +43,7 @@
 
 
     <MudItem xs="6" sm="6" md="6">
+        <MudProgressLinear Indeterminate="@isProcessing" Color="Color.Dark" />
         <!-- chat are  https://github.com/iammukeshm/BlazorChat/blob/master/BlazorChat/Client/Pages/Chat.razor-->
         <MudPaper Elevation="25" Class="pa-4 flex-grow-1">
             <MudToolBar Dense="true">
@@ -94,6 +98,7 @@
 
 
 @code {
+    public bool isProcessing = false;
     private string SelectedScene = FreeChatScenes.SceneList.First().SceneId;
     private string SelectedFeedbackLang = FeedbackLang.LanguageList.First().Key;
     private bool isSetupAreaOpen = true;
@@ -101,15 +106,7 @@
 
     private List<ChatRequestMessage> messages = new List<ChatRequestMessage>();
 
-    private List<Feedback> feedbacks = new List<Feedback>() {
-        new Feedback() { TargetMsgIndex = 0, Type = FeedbackTypeEnum.Vocabulary, Content = "Hello" },
-        new Feedback() { TargetMsgIndex = 1, Type = FeedbackTypeEnum.Grammar, Content = "How are you?" },
-        new Feedback() { TargetMsgIndex = 2, Type = FeedbackTypeEnum.Vocabulary, Content = "I'm fine, thank you." },
-        new Feedback() { TargetMsgIndex = 29, Type = FeedbackTypeEnum.Vocabulary, Content = "Good morning" },
-        new Feedback() { TargetMsgIndex = 30, Type = FeedbackTypeEnum.Grammar, Content = "Good afternoon" },
-        new Feedback() { TargetMsgIndex = 31, Type = FeedbackTypeEnum.Other, Content = "Good evening" },
-        new Feedback() { TargetMsgIndex = 32, Type = FeedbackTypeEnum.Vocabulary, Content = "Good night" }
-    };
+    private List<Feedback> feedbacks = new List<Feedback>();
 
     private double[] AggregatedFeedbacks{
         get => feedbacks.GroupBy(f => f.Type).Select(g => (double)g.Count()).ToArray();
@@ -121,14 +118,25 @@
     
     private async Task InitializeChatAsync()
     {
-        // ここでチャットを開始する処理を書く
+        isProcessing = true;
         messages.Clear();
-        messages.Add(new ChatRequestSystemMessage("Chat started."));
-        await CallChatCompletionAsync();
+
+        try{
+            var systemPrompt = FreeChat.GetSystemPrompt(SelectedScene, SelectedFeedbackLang);
+
+            messages.Add(new ChatRequestSystemMessage(systemPrompt));
+            await CallChatCompletionAsync();
+        }
+        catch(Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            isProcessing = false;
+        }
     }
 
     private async Task SubmitChatAsync()
     {
+        isProcessing = true;
         // messageにChatRequestSystemMessage型の値が含まれているかをチェックする
         if (!messages.Any(m => m is ChatRequestSystemMessage))
         {
@@ -136,28 +144,45 @@
             return;
         }
 
-        // ここでメッセージを送信する処理を書く
         if (string.IsNullOrWhiteSpace(CurrentMessage))
         {
             Snackbar.Add("Please input your message.", Severity.Error);
         }
-        messages.Add(new ChatRequestUserMessage(CurrentMessage));
-        CurrentMessage = string.Empty;
-        await CallChatCompletionAsync();
+
+        try{
+            messages.Add(new ChatRequestUserMessage(CurrentMessage));
+            CurrentMessage = string.Empty;
+            await CallChatCompletionAsync();
+        }
+        catch(Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+            isProcessing = false;
+        }
     }
 
     private async Task CallChatCompletionAsync()
     {
-        var chatOptions = new ChatCompletionsOptions(
-        "gpt35-1106", 
-        messages);
+        var chatOptions = new ChatCompletionsOptions(appConfig.Value.OpenAIDeployment, messages)
+        {
+            ResponseFormat = ChatCompletionsResponseFormat.JsonObject
+        };
 
         var response = await openAIClient.GetChatCompletionsAsync(chatOptions);
         var choice = response.Value.Choices.First();
 
         if (choice.FinishReason == CompletionsFinishReason.Stopped)
         {
-            messages.Add(new ChatRequestAssistantMessage(choice.Message.Content));
+            var FreeChatResponse = JsonSerializer.Deserialize<FreeChatResponse>(choice.Message.Content);
+
+            messages.Add(new ChatRequestAssistantMessage(FreeChatResponse?.Message));
+
+            if (FreeChatResponse?.Feedbacks != null)
+            {
+                FreeChatResponse.Feedbacks.ForEach(f => f.TargetMsgIndex = messages.Count - 1);
+                feedbacks.AddRange(FreeChatResponse.Feedbacks);
+            }
         }
+        isProcessing = false;
     }
 }
