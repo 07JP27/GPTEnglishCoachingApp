@@ -1,0 +1,53 @@
+@using GPTEnglishCoachingApp.Models
+
+<div class="my-3">
+    <MudStack Row="true" Spacing="0">
+        <div Style="@($"height:2vh; background-color: {Colors.DeepOrange.Darken3}; width:{GrammarPercentage}%")"></div>
+        <div Style="@($"height:2vh; background-color: {Colors.Blue.Darken1}; width:{VocabularyPercentage}%")"></div>
+        <div Style="@($"height:2vh; background-color: {Colors.Lime.Darken3}; width:{OtherPercentage}%")"></div>
+    </MudStack>
+    <MudStack Justify="Justify.Center" Row="true" class="my-2">
+            <div class="mud-chart-legend-item">
+                <span class="mud-chart-legend-marker" Style="@($"background-color: {Colors.DeepOrange.Darken3};")"></span>
+                <p class="mud-typography mud-typography-body2 mud-typography-display-inline">Grammar</p>
+            </div>
+            <div class="mud-chart-legend-item">
+                <span class="mud-chart-legend-marker" Style="@($"background-color: {Colors.Blue.Darken1};")"></span><!--!-->
+                <p class="mud-typography mud-typography-body2 mud-typography-display-inline">Vocabulary</p>
+            </div>
+            <div class="mud-chart-legend-item">
+                <span class="mud-chart-legend-marker" Style="@($"background-color: {Colors.Lime.Darken3};")"></span><!--!-->
+                <p class="mud-typography mud-typography-body2 mud-typography-display-inline">Other</p>
+            </div>
+    </MudStack>
+</div>
+
+
+
+
+
+@code{
+    [Parameter]
+    public List<Feedback> FeedbackList  { get; set; } = new List<Feedback>();
+
+    private double GrammarPercentage{
+        get{
+            if(FeedbackList.Count == 0){return 0;}
+            return (double)FeedbackList.Where(f => f.Type == FeedbackTypeEnum.Grammar).Count() / FeedbackList.Count * 100;
+        }
+    }
+
+    private double VocabularyPercentage{
+        get{
+            if(FeedbackList.Count == 0){return 0;}
+            return (double)FeedbackList.Where(f => f.Type == FeedbackTypeEnum.Vocabulary).Count() / FeedbackList.Count * 100;
+        }
+    }
+
+    private double OtherPercentage{
+        get{
+            if(FeedbackList.Count == 0){return 0;}
+            return (double)FeedbackList.Where(f => f.Type == FeedbackTypeEnum.Other).Count() / FeedbackList.Count * 100;
+        }
+    }    
+}

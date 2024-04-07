@@ -43,8 +43,7 @@
 
 
     <MudItem xs="6" sm="6" md="6">
-        <MudProgressLinear Indeterminate="@isProcessing" Color="Color.Dark" />
-        <!-- chat are  https://github.com/iammukeshm/BlazorChat/blob/master/BlazorChat/Client/Pages/Chat.razor-->
+        <MudProgressLinear Indeterminate="@isProcessing" Color="Color.Tertiary" />
         <MudPaper Elevation="25" Class="pa-4 flex-grow-1">
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">Chat</MudText>
@@ -70,7 +69,7 @@
                 }
             </div>
             <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
-                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitChatAsync" />
+                <MudTextField  T="string" @bind-Value="CurrentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitChatAsync" Disabled="@isProcessing" />
             </MudPaper>
         </MudPaper>
     </MudItem>
@@ -82,16 +81,20 @@
             <MudToolBar Dense="true">
                 <MudText Typo="Typo.h6">Feedback</MudText>
             </MudToolBar>
-            <MudStack class="px-4" style="max-height:44vh;min-height:44vh; overflow:scroll;" >
-                @foreach (var feedback in feedbackList)
+            <MudStack class="px-4" style="max-height:64vh;min-height:64vh; overflow:scroll;" >
+                @if (feedbackList.Count == 0)
                 {
-                    <FeedbackItem Type="feedback.Type" Content="@feedback.Content" />
+                    <MudText class="px-4" Typo="Typo.body1">No feedback yet.</MudText>
+                }else
+                {
+                    @foreach (var feedback in feedbackList)
+                    {
+                        <FeedbackItem Type="feedback.Type" Content="@feedback.Content" />
+                    }
                 }
             </MudStack>
             <MudDivider />
-            <MudChart ChartType="ChartType.Donut" LegendPosition="Position.Right" Width="300px" Height="300px"
-                    InputData="@AggregatedFeedback" InputLabels="@AggregatedFeedbackLabels">
-            </MudChart>
+            <FeedbackPropotionBar FeedbackList="@feedbackList" />
         </MudPaper>
     </MudItem>
 </MudGrid>
@@ -107,14 +110,6 @@
     private List<ChatRequestMessage> messages = new List<ChatRequestMessage>();
 
     private List<Feedback> feedbackList = new List<Feedback>();
-
-    private double[] AggregatedFeedback{
-        get => feedbackList.GroupBy(f => f.Type).Select(g => (double)g.Count()).ToArray();
-    }
-
-    private string[] AggregatedFeedbackLabels{
-        get => feedbackList.GroupBy(f => f.Type).Select(g => g.Key.ToString()).ToArray();
-    }
     
     private async Task InitializeChatAsync()
     {
