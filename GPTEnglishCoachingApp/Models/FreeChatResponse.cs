@@ -7,7 +7,7 @@ namespace GPTEnglishCoachingApp.Models
         [JsonPropertyName("message")]
         public string Message { get; set; }= string.Empty;
 
-        [JsonPropertyName("feedbacks")]
-        public List<Feedback> Feedbacks { get; set; }= new List<Feedback>();
+        [JsonPropertyName("feedback")]
+        public List<Feedback> Feedback { get; set; }= new List<Feedback>();
     }
 }

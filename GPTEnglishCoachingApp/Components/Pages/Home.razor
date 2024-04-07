@@ -83,14 +83,14 @@
                 <MudText Typo="Typo.h6">Feedback</MudText>
             </MudToolBar>
             <MudStack class="px-4" style="max-height:44vh;min-height:44vh; overflow:scroll;" >
-                @foreach (var feedback in feedbacks)
+                @foreach (var feedback in feedbackList)
                 {
                     <FeedbackItem Type="feedback.Type" Content="@feedback.Content" />
                 }
             </MudStack>
             <MudDivider />
             <MudChart ChartType="ChartType.Donut" LegendPosition="Position.Right" Width="300px" Height="300px"
-                    InputData="@AggregatedFeedbacks" InputLabels="@AggregatedFeedbacksLabels">
+                    InputData="@AggregatedFeedback" InputLabels="@AggregatedFeedbackLabels">
             </MudChart>
         </MudPaper>
     </MudItem>
@@ -106,14 +106,14 @@
 
     private List<ChatRequestMessage> messages = new List<ChatRequestMessage>();
 
-    private List<Feedback> feedbacks = new List<Feedback>();
+    private List<Feedback> feedbackList = new List<Feedback>();
 
-    private double[] AggregatedFeedbacks{
-        get => feedbacks.GroupBy(f => f.Type).Select(g => (double)g.Count()).ToArray();
+    private double[] AggregatedFeedback{
+        get => feedbackList.GroupBy(f => f.Type).Select(g => (double)g.Count()).ToArray();
     }
 
-    private string[] AggregatedFeedbacksLabels{
-        get => feedbacks.GroupBy(f => f.Type).Select(g => g.Key.ToString()).ToArray();
+    private string[] AggregatedFeedbackLabels{
+        get => feedbackList.GroupBy(f => f.Type).Select(g => g.Key.ToString()).ToArray();
     }
     
     private async Task InitializeChatAsync()
@@ -177,10 +177,10 @@
 
             messages.Add(new ChatRequestAssistantMessage(FreeChatResponse?.Message));
 
-            if (FreeChatResponse?.Feedbacks != null)
+            if (FreeChatResponse?.Feedback != null)
             {
-                FreeChatResponse.Feedbacks.ForEach(f => f.TargetMsgIndex = messages.Count - 1);
-                feedbacks.AddRange(FreeChatResponse.Feedbacks);
+                FreeChatResponse.Feedback.ForEach(f => f.TargetMsgIndex = messages.Count - 1);
+                feedbackList.AddRange(FreeChatResponse.Feedback);
             }
         }
         isProcessing = false;
