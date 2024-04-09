@@ -1,0 +1,251 @@
+﻿@page "/toeic"
+@using GPTEnglishCoachingApp.Models;
+@using Azure.AI.OpenAI;
+@using Microsoft.Extensions.Options
+@using System.Text.Json
+@inject OpenAIClient openAIClient;
+@inject ISnackbar Snackbar
+@inject IOptions<AppConfig> appConfig
+
+ <MudGrid>
+    <MudItem xs="12" sm="12" md="12">
+        <MudExpansionPanels>
+            <MudExpansionPanel Text="Setup" MaxHeight="1000" @bind-IsExpanded="isSetupAreaOpen" >
+                <MudStack Row="true">
+                    <MudItem xs="3" sm="3" md="1">
+                        <MudSelect T="int" @bind-Value="minTargetLevel" Label="Min Level" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="400">400</MudSelectItem>
+                            <MudSelectItem Value="500">500</MudSelectItem>
+                            <MudSelectItem Value="600">600</MudSelectItem>
+                            <MudSelectItem Value="700">700</MudSelectItem>
+                            <MudSelectItem Value="800">800</MudSelectItem>
+                            <MudSelectItem Value="900">900</MudSelectItem>
+                            <MudSelectItem Value="990">990</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="3" sm="3" md="1">
+                        <MudSelect T="int" @bind-Value="maxTargetLevel" Label="Max Level" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            <MudSelectItem Value="400">400</MudSelectItem>
+                            <MudSelectItem Value="500">500</MudSelectItem>
+                            <MudSelectItem Value="600">600</MudSelectItem>
+                            <MudSelectItem Value="700">700</MudSelectItem>
+                            <MudSelectItem Value="800">800</MudSelectItem>
+                            <MudSelectItem Value="900">900</MudSelectItem>
+                            <MudSelectItem Value="990">990</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem  xs="2" sm="2" md="2">
+                        <MudNumericField @bind-Value="questionCount" Label="Question count" Variant="Variant.Outlined" Min="1" Max="10" />
+                    </MudItem>
+                    <MudItem xs="3" sm="3" md="2">
+                        <MudSelect T="string" @bind-Value="selectedFollowupLang" Label="Explanation langage" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            <!-- LanguageListの値を選択肢として表示 -->
+                            @foreach (var item in FeedbackLang.LanguageList)
+                            {
+                                <MudSelectItem Value="@item.Key">
+                                    @item.Value
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem  xs="6" sm="4" md="2">
+                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeExamAsync">Start exam</MudButton>
+                    </MudItem>
+                </MudStack>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+    </MudItem>
+
+    
+    <MudItem xs="12" sm="12" md="12">
+        <MudProgressLinear Indeterminate="@isProcessing" Color="Color.Tertiary" />
+        <MudPaper Elevation="25" Class="pa-4 flex-grow-1">
+            <MudToolBar Dense="true">
+                <MudText Typo="Typo.h6">Question</MudText>
+            </MudToolBar>
+            <MudGrid class="mb-0">
+                <MudItem xs="12" sm="6" md="8"><!--問題エリア-->
+                    <div Class="ml-10">
+                        @if(currentQuestion == null)
+                        {
+                            <MudText Typo="Typo.h6" GutterBottom="true">The exam has not started yet.  Please setup exam and push start button first</MudText>
+                        }
+                        else{                    
+                            <MudText Typo="Typo.h6" GutterBottom="true" Color="String.IsNullOrEmpty(currentQuestion.UserAnswer)?Color.Default : currentQuestion.IsCorrect?Color.Success:Color.Error">No. @(currentQuestion.Index)</MudText>
+                            <MudText Typo="Typo.body1" GutterBottom="true" Color="String.IsNullOrEmpty(currentQuestion.UserAnswer)?Color.Default : currentQuestion.IsCorrect?Color.Success:Color.Error">@(currentQuestion.Question)</MudText>
+
+                            @if(string.IsNullOrEmpty(currentQuestion.UserAnswer))
+                            {
+                                <MudRadioGroup @bind-Value="selectedOptionKey">
+                                    @foreach(var option in currentQuestion.Options)
+                                    {
+                                        <MudRadio Value="option.Key">@option.Option</MudRadio>
+                                    }
+                                </MudRadioGroup>
+                            }
+                            else
+                            {
+                                <MudRadioGroup @bind-Value="currentQuestion.UserAnswer" Disabled="true">
+                                    @foreach(var option in currentQuestion.Options)
+                                    {
+                                        <MudRadio Value="option.Key">@option.Option</MudRadio>
+                                    }
+                                </MudRadioGroup>
+                            }
+                            
+                            <MudButtonGroup Color="Color.Default" Size="Size.Large" Variant="Variant.Text" style="width:100%" class="mt-8">
+                                <MudButton FullWidth="true" OnClick="()=>{currentQuestionIndex--;}" Disabled="currentQuestionIndex==1">＜</MudButton>
+                                @if(string.IsNullOrEmpty(currentQuestion.UserAnswer))
+                                {
+                                    <MudButton FullWidth="true" OnClick="SubmitAnswer">Submit</MudButton>
+                                }
+                                else
+                                {
+                                     <MudButton FullWidth="true">Follow up</MudButton>
+                                }
+                                <MudButton FullWidth="true" OnClick="()=>{currentQuestionIndex++;}" Disabled="string.IsNullOrEmpty(currentQuestion.UserAnswer) || currentQuestion.Index == questions.Count">＞</MudButton>
+                            </MudButtonGroup>
+                        }
+
+                    </div>
+                    
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4"><!--問題タイムラインエリア-->
+                    <div class="d-flex flex-column mx-4" style="max-height:65vh; overflow:scroll;" id="chatContainer">
+                        @if(questions.Count > 0)
+                        {
+                            <MudTimeline TimelinePosition="TimelinePosition.Start" TimelineAlign="TimelineAlign.Start">
+                                @foreach(var question in questions)
+                                {
+                                    <MudTimelineItem Elevation="25" Color="currentQuestionIndex == question.Index?Color.Info:String.IsNullOrEmpty(question.UserAnswer)?Color.Default : question.IsCorrect?Color.Success:Color.Error">
+                                        <ItemContent>
+                                            <MudPaper Elevation="0" Class="mt-n1">
+                                                <MudText Typo="Typo.h6" GutterBottom="true"  Color="currentQuestionIndex == question.Index?Color.Info:String.IsNullOrEmpty(question.UserAnswer)?Color.Default : question.IsCorrect?Color.Success:Color.Error">Question @(question.Index) (Level @(question.TargetLevel))</MudText>
+                                            </MudPaper>
+                                        </ItemContent>
+                                    </MudTimelineItem>
+                                }
+                            </MudTimeline>
+                        }
+                    </div>
+                </MudItem>
+            </MudGrid>
+            
+            <MudPaper Elevation="25" Class="d-flex flex-row" Style="">
+            </MudPaper>
+        </MudPaper>
+    </MudItem>
+
+</MudGrid>
+
+
+@code {
+    private bool isProcessing = false;
+    private bool isSetupAreaOpen = true;
+    private int minTargetLevel = 500;
+    private int maxTargetLevel = 600;
+    private string selectedFollowupLang = FeedbackLang.LanguageList.First().Key;
+    private int questionCount = 10;
+    private int? currentQuestionIndex = 1;
+
+    private string? selectedOptionKey = null;
+
+    private ToeicExamQuestionItem? currentQuestion => questions.FirstOrDefault(q => q.Index == currentQuestionIndex);
+
+    private List<ToeicExamQuestionItem> questions = new List<ToeicExamQuestionItem>()
+    {
+        new ToeicExamQuestionItem
+            {
+                Index = 1,
+                Question = "What is the capital of Japan?",
+                Options = new List<ToeicExamQuestionOptionItem>
+                    { 
+                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=true },
+                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="C", Option = "Kyoto", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
+                    },
+                TargetLevel = 500
+            },
+        new ToeicExamQuestionItem
+            {
+                Index = 2,
+                Question = "What is the capital of America?",
+                Options = new List<ToeicExamQuestionOptionItem>
+                    { 
+                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="C", Option = "Washington D.C.", IsAnswer=true },
+                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
+                    },
+                TargetLevel = 500,
+            },
+        new ToeicExamQuestionItem
+            {
+                Index = 3,
+                Question = "What is the capital of Japan?",
+                Options = new List<ToeicExamQuestionOptionItem>
+                    { 
+                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=true },
+                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="C", Option = "Kyoto", IsAnswer=false },
+                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
+                    },
+                TargetLevel = 500,
+            },
+    };
+
+    private async Task InitializeExamAsync()
+    {
+        isProcessing = true;
+        var systemPrompt = ToeicPrompt.GetSystemPrompt(minTargetLevel, maxTargetLevel, questionCount, selectedFollowupLang);
+
+        try{
+            questions = (await GenerateExamQuestionAsync(systemPrompt)).Questions;
+        }
+        catch(Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private async Task<ToeicExamQuestion> GenerateExamQuestionAsync(string prompt)
+    {
+        List<ChatRequestMessage> messages = new List<ChatRequestMessage>
+        {
+            new ChatRequestSystemMessage(prompt)
+        };
+
+        var chatOptions = new ChatCompletionsOptions(appConfig.Value.OpenAIDeployment, messages)
+        {
+            ResponseFormat = ChatCompletionsResponseFormat.JsonObject
+        };
+
+        var response = await openAIClient.GetChatCompletionsAsync(chatOptions);
+        var choice = response.Value.Choices.First();
+
+        if (choice.FinishReason == CompletionsFinishReason.Stopped)
+        {
+            // TODO:リストの件数がQuestionCountと一致するか、各設問に正解が一つしかないかなどをチェックして不備があれば再生成などのエラー処理をする
+            return JsonSerializer.Deserialize<ToeicExamQuestion>(choice.Message.Content) ?? throw new Exception("Failed to generate exam question.");
+        }
+
+        throw new Exception("Failed to generate exam question.");
+    }
+
+    private void SubmitAnswer()
+    {
+        if (string.IsNullOrEmpty(selectedOptionKey))
+        {
+            Snackbar.Add("Please select an answer.", Severity.Error);
+            return;
+        }
+
+        currentQuestion!.UserAnswer = selectedOptionKey;
+        selectedOptionKey = null;
+    }
+}

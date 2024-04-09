@@ -1,4 +1,4 @@
-public static class FreeChat
+public static class FreeChatPrompt
 {
     private const string SystemPromptTemplate = """
     # Instructions

@@ -101,7 +101,7 @@
 
 
 @code {
-    public bool isProcessing = false;
+    private bool isProcessing = false;
     private string SelectedScene = FreeChatScenes.SceneList.First().SceneId;
     private string SelectedFeedbackLang = FeedbackLang.LanguageList.First().Key;
     private bool isSetupAreaOpen = true;
@@ -117,7 +117,7 @@
         messages.Clear();
 
         try{
-            var systemPrompt = FreeChat.GetSystemPrompt(SelectedScene, SelectedFeedbackLang);
+            var systemPrompt = FreeChatPrompt.GetSystemPrompt(SelectedScene, SelectedFeedbackLang);
 
             messages.Add(new ChatRequestSystemMessage(systemPrompt));
             await CallChatCompletionAsync();
