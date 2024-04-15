@@ -49,7 +49,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem  xs="6" sm="4" md="2">
-                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeExamAsync">Start exam</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeExamAsync" Disabled="@isProcessing">Start exam</MudButton>
                     </MudItem>
                 </MudStack>
             </MudExpansionPanel>
@@ -68,7 +68,7 @@
                     <div Class="ml-10">
                         @if(currentQuestion == null)
                         {
-                            <MudText Typo="Typo.h6" GutterBottom="true">The exam has not started yet.  Please setup exam and push start button first</MudText>
+                            <MudText Typo="Typo.h6" GutterBottom="true">The exam has not started yet.Please setup exam and push start button first</MudText>
                         }
                         else{                    
                             <MudText Typo="Typo.h6" GutterBottom="true" Color="String.IsNullOrEmpty(currentQuestion.UserAnswer)?Color.Default : currentQuestion.IsCorrect?Color.Success:Color.Error">No. @(currentQuestion.Index)</MudText>
@@ -103,7 +103,7 @@
                                 {
                                      <MudButton FullWidth="true">Follow up</MudButton>
                                 }
-                                <MudButton FullWidth="true" OnClick="()=>{currentQuestionIndex++;}" Disabled="string.IsNullOrEmpty(currentQuestion.UserAnswer) || currentQuestion.Index == questions.Count">＞</MudButton>
+                                <MudButton FullWidth="true" OnClick="()=>{currentQuestionIndex++;}" Disabled="string.IsNullOrEmpty(currentQuestion.UserAnswer) || currentQuestion.Index == questions?.Count">＞</MudButton>
                             </MudButtonGroup>
                         }
 
@@ -112,7 +112,7 @@
                 </MudItem>
                 <MudItem xs="12" sm="6" md="4"><!--問題タイムラインエリア-->
                     <div class="d-flex flex-column mx-4" style="max-height:65vh; overflow:scroll;" id="chatContainer">
-                        @if(questions.Count > 0)
+                        @if(questions != null)
                         {
                             <MudTimeline TimelinePosition="TimelinePosition.Start" TimelineAlign="TimelineAlign.Start">
                                 @foreach(var question in questions)
@@ -143,65 +143,26 @@
     private bool isProcessing = false;
     private bool isSetupAreaOpen = true;
     private int minTargetLevel = 500;
-    private int maxTargetLevel = 600;
+    private int maxTargetLevel = 700;
     private string selectedFollowupLang = FeedbackLang.LanguageList.First().Key;
     private int questionCount = 10;
-    private int? currentQuestionIndex = 1;
+   
 
     private string? selectedOptionKey = null;
 
-    private ToeicExamQuestionItem? currentQuestion => questions.FirstOrDefault(q => q.Index == currentQuestionIndex);
-
-    private List<ToeicExamQuestionItem> questions = new List<ToeicExamQuestionItem>()
-    {
-        new ToeicExamQuestionItem
-            {
-                Index = 1,
-                Question = "What is the capital of Japan?",
-                Options = new List<ToeicExamQuestionOptionItem>
-                    { 
-                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=true },
-                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="C", Option = "Kyoto", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
-                    },
-                TargetLevel = 500
-            },
-        new ToeicExamQuestionItem
-            {
-                Index = 2,
-                Question = "What is the capital of America?",
-                Options = new List<ToeicExamQuestionOptionItem>
-                    { 
-                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="C", Option = "Washington D.C.", IsAnswer=true },
-                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
-                    },
-                TargetLevel = 500,
-            },
-        new ToeicExamQuestionItem
-            {
-                Index = 3,
-                Question = "What is the capital of Japan?",
-                Options = new List<ToeicExamQuestionOptionItem>
-                    { 
-                        new ToeicExamQuestionOptionItem { Key="A", Option = "Tokyo", IsAnswer=true },
-                        new ToeicExamQuestionOptionItem { Key="B", Option = "Osaka", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="C", Option = "Kyoto", IsAnswer=false },
-                        new ToeicExamQuestionOptionItem { Key="D", Option = "Hokkaido", IsAnswer=false }
-                    },
-                TargetLevel = 500,
-            },
-    };
+    private int? currentQuestionIndex = null;
+    private ToeicExamQuestionItem? currentQuestion => questions?.FirstOrDefault(q => q.Index == currentQuestionIndex);
+    private List<ToeicExamQuestionItem>? questions = null;
 
     private async Task InitializeExamAsync()
     {
         isProcessing = true;
-        var systemPrompt = ToeicPrompt.GetSystemPrompt(minTargetLevel, maxTargetLevel, questionCount, selectedFollowupLang);
 
         try{
+            var systemPrompt = ToeicPrompt.GetSystemPrompt(questionCount, minTargetLevel, maxTargetLevel);
+            
             questions = (await GenerateExamQuestionAsync(systemPrompt)).Questions;
+            currentQuestionIndex = 1;
         }
         catch(Exception ex)
         {

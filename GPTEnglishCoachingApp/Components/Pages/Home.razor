@@ -34,7 +34,7 @@
                         </MudSelect>
                     </MudItem>
                     <MudItem  xs="2" sm="2" md="2">
-                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeChatAsync">Start chatting</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Tertiary" Size="Size.Large" OnClick="InitializeChatAsync" Disabled="@isProcessing">Start chatting</MudButton>
                     </MudItem>
                 </MudStack>
             </MudExpansionPanel>

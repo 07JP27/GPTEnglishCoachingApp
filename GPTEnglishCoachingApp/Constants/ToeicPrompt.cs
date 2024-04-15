@@ -10,40 +10,40 @@ public static class ToeicPrompt
 
     # Output
     - Output the question in the following JSON format
-    {
+    {{
         "questions": [
-            {
+            {{
                 "question": "Body of question",
                 "targetLevel": 700,
                 "options": [
-                    {
+                    {{
                     "key": "A",
                     "option": "Option A",
                     "isAnswer": false
-                    },
-                    {
+                    }},
+                    {{
                     "key": "B",
                     "option": "Option B",
                     "isAnswer": true
-                    },
-                    {
+                    }},
+                    {{
                     "key": "C",
                     "option": "Option C",
                     "isAnswer": false
-                    },
-                    {
+                    }},
+                    {{
                     "key": "D",
                     "option": "Option D",
                     "isAnswer": false
-                    }
+                    }}
                 ]
-            }
+            }}
         ]
-    }
+    }}
     """;
 
-    public static string GetSystemPrompt(int minTargetLevel, int maxTargetLevel, int QuestionCount, string explanationLang )
+    public static string GetSystemPrompt(int QuestionCount, int minTargetLevel, int maxTargetLevel)
     {
-        return string.Format(SystemPromptTemplate, minTargetLevel, maxTargetLevel,QuestionCount,explanationLang);
+        return string.Format(SystemPromptTemplate, minTargetLevel, maxTargetLevel,QuestionCount);
     }
 }

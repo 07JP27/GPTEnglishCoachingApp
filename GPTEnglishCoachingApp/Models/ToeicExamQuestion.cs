@@ -10,7 +10,6 @@ namespace GPTEnglishCoachingApp.Models
 
     public class ToeicExamQuestionItem
     {
-        [JsonPropertyName("index")]
         public int Index { get; set; }
 
         [JsonPropertyName("question")]
