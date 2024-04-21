@@ -160,8 +160,13 @@
 
         try{
             var systemPrompt = ToeicPrompt.GetSystemPrompt(questionCount, minTargetLevel, maxTargetLevel);
-            
             questions = (await GenerateExamQuestionAsync(systemPrompt)).Questions;
+
+            // questionsのIndexを設定
+            for (var i = 0; i < questions.Count; i++)
+            {
+                questions[i].Index = i + 1;
+            }
             currentQuestionIndex = 1;
         }
         catch(Exception ex)
@@ -183,7 +188,8 @@
 
         var chatOptions = new ChatCompletionsOptions(appConfig.Value.OpenAIDeployment, messages)
         {
-            ResponseFormat = ChatCompletionsResponseFormat.JsonObject
+            ResponseFormat = ChatCompletionsResponseFormat.JsonObject,
+            MaxTokens = 2000,
         };
 
         var response = await openAIClient.GetChatCompletionsAsync(chatOptions);
