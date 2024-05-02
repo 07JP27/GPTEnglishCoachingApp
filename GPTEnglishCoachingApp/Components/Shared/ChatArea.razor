@@ -1,0 +1,46 @@
+@using Azure.AI.OpenAI
+<div class="d-flex flex-column px-4" style="max-height:63vh;min-height:63vh; overflow:scroll;" id="chatContainer">
+    @foreach (var message in Messages)
+    {
+        if(message.Role == ChatRole.User)
+        {
+            <div class="d-flex flex-row my-1">
+                <div>
+                    <MudText Typo="Typo.body1" Style="@($"padding:15px; background-color:{Colors.Teal.Darken2}; border-radius:5px; margin-top:5px;")">@(((ChatRequestUserMessage)message).Content)</MudText>
+                </div>
+            </div>
+        } else if(message.Role == ChatRole.Assistant)
+        {
+            <div class="d-flex flex-row my-1">
+                <div>
+                    <MudText Typo="Typo.body1" Style=" padding: 15px; background-color:var(--mud-palette-background-grey); border-radius:5px; margin-top:5px;">@(((ChatRequestAssistantMessage)message).Content)</MudText>
+                </div>
+            </div>
+        }
+    }
+</div>
+<MudPaper Elevation="25" Class="d-flex flex-row" Style="">
+    <MudTextField  T="string" @bind-Value="currentMessage" Placeholder="Enter your message..." Variant="Variant.Outlined" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Outlined.Send" OnAdornmentClick="SubmitChat" Disabled="@IsProcessing" />
+</MudPaper>
+
+@code{
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
+    public List<ChatRequestMessage> Messages { get; set; } = new List<ChatRequestMessage>();
+
+    [Parameter]
+    public EventCallback<string> OnSubmitChat { get; set; }
+
+    private string currentMessage = String.Empty;
+
+    private async Task SubmitChat()
+    {
+        if(currentMessage != String.Empty)
+        {
+            await OnSubmitChat.InvokeAsync(currentMessage);
+            currentMessage = String.Empty;
+        }
+    }
+}

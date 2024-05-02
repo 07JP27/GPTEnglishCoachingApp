@@ -30,6 +30,14 @@ namespace GPTEnglishCoachingApp.Models
         public bool IsCorrect { 
             get =>Answer == UserAnswer;
         }
+
+        public string GetUserAnswerLabel { 
+            get => Options.FirstOrDefault(option => option.Key == UserAnswer)?.Option ?? throw new KeyNotFoundException();
+        }
+
+        public string GetAnswerLabel { 
+            get => Options.FirstOrDefault(option => option.IsAnswer)?.Option ?? throw new KeyNotFoundException();
+        }
     }
 
     public class ToeicExamQuestionOptionItem

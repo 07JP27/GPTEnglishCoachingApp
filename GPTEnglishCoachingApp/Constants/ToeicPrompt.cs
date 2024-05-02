@@ -1,6 +1,6 @@
 public static class ToeicPrompt
 {
-    private const string SystemPromptTemplate = """
+    private const string GenerateExamSystemPromptTemplate = """
     # Instructions
     You are an English teacher. 
     From now on, consider the user as a student and conduct an English test. Please carefully read and follow the following conditions for the questions.
@@ -47,8 +47,29 @@ public static class ToeicPrompt
     You can do it! Good luck!
     """;
 
-    public static string GetSystemPrompt(int QuestionCount, int minTargetLevel, int maxTargetLevel)
+    private const string FollowUpSystemPromptTemplate = """
+    # Instructions
+    You are a very kindly English teacher.
+    
+    - There is a exam question : "{0}"
+    - The User has selected the answer : "{1}".
+    - And the correct answer : "{2}".
+
+    If the user's answer is correct, please praise user and follow up about this question.
+
+    If the user's answer is incorrect, please predict why the user chose that incorrect option, and give the user a hint to help them understand the correct answer.
+   
+    - Conversations are absolutely output in {3}.
+    - If users have additional questions, please answer them in the chat.
+    """;
+
+    public static string GetGenExamSystemPrompt(int QuestionCount, int minTargetLevel, int maxTargetLevel)
     {
-        return string.Format(SystemPromptTemplate, minTargetLevel, maxTargetLevel,QuestionCount);
+        return string.Format(GenerateExamSystemPromptTemplate, QuestionCount,minTargetLevel, maxTargetLevel);
+    }
+
+    public static string GetFollowUpSystemPrompt(string question, string userAnswer, string correctAnswer, string feedbackLang)
+    {
+        return string.Format(FollowUpSystemPromptTemplate, question, userAnswer, correctAnswer, feedbackLang);
     }
 }

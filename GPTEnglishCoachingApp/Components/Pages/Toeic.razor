@@ -101,7 +101,7 @@
                                 }
                                 else
                                 {
-                                     <MudButton FullWidth="true">Follow up</MudButton>
+                                     <MudButton FullWidth="true" OnClick="StartFollowUp">Follow up</MudButton>
                                 }
                                 <MudButton FullWidth="true" OnClick="()=>{currentQuestionIndex++;}" Disabled="string.IsNullOrEmpty(currentQuestion.UserAnswer) || currentQuestion.Index == questions?.Count">＞</MudButton>
                             </MudButtonGroup>
@@ -136,16 +136,29 @@
         </MudPaper>
     </MudItem>
 
+    <MudDialog @bind-IsVisible="followUpDialogVisible" Options="followUpDialogOptions">
+        <TitleContent>
+            <MudText Typo="Typo.h6">
+                <MudIcon Icon="@Icons.Material.Filled.Chat" Class="mr-3" />Follow up chat
+            </MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudProgressLinear Indeterminate="@isFollowUpProcessing" Color="Color.Tertiary" />
+            <ChatArea IsProcessing="@isFollowUpProcessing" Messages="@followUpMessages" OnSubmitChat="SubmitChatAsync"  />
+        </DialogContent>
+    </MudDialog>
+
 </MudGrid>
 
 
 @code {
     private bool isProcessing = false;
+    private bool isFollowUpProcessing = false;
     private bool isSetupAreaOpen = true;
     private int minTargetLevel = 500;
     private int maxTargetLevel = 700;
     private string selectedFollowupLang = FeedbackLang.LanguageList.First().Key;
-    private int questionCount = 10;
+    private int questionCount = 5;
    
 
     private string? selectedOptionKey = null;
@@ -154,12 +167,16 @@
     private ToeicExamQuestionItem? currentQuestion => questions?.FirstOrDefault(q => q.Index == currentQuestionIndex);
     private List<ToeicExamQuestionItem>? questions = null;
 
+    private bool followUpDialogVisible = false;
+    private DialogOptions followUpDialogOptions = new DialogOptions() { CloseButton = true,  FullWidth = true, MaxWidth = MaxWidth.Medium };
+    private List<ChatRequestMessage> followUpMessages = new List<ChatRequestMessage>();
+
     private async Task InitializeExamAsync()
     {
         isProcessing = true;
 
         try{
-            var systemPrompt = ToeicPrompt.GetSystemPrompt(questionCount, minTargetLevel, maxTargetLevel);
+            var systemPrompt = ToeicPrompt.GetGenExamSystemPrompt(questionCount, minTargetLevel, maxTargetLevel);
             questions = (await GenerateExamQuestionAsync(systemPrompt)).Questions;
 
             // questionsのIndexを設定
@@ -214,5 +231,60 @@
 
         currentQuestion!.UserAnswer = selectedOptionKey;
         selectedOptionKey = null;
+    }
+
+    private async Task StartFollowUp()
+    {
+        // Follow upの処理を実装
+        followUpDialogVisible = true;
+        isFollowUpProcessing = true;
+        followUpMessages.Clear();
+
+        if (currentQuestion == null) return;
+
+        try{
+            var systemPrompt = ToeicPrompt.GetFollowUpSystemPrompt(currentQuestion.Question, currentQuestion.GetUserAnswerLabel, currentQuestion.GetAnswerLabel, selectedFollowupLang);
+
+            followUpMessages.Add(new ChatRequestSystemMessage(systemPrompt));
+            await CallChatCompletionAsync();
+        }
+        catch(Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isFollowUpProcessing = false;
+        }
+    }
+
+    private async Task SubmitChatAsync(string message)
+    {
+        isFollowUpProcessing = true;
+        try{
+            followUpMessages.Add(new ChatRequestUserMessage(message));
+            await CallChatCompletionAsync();
+        }
+        catch(Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            isFollowUpProcessing = false;
+        }
+    }
+
+    private async Task CallChatCompletionAsync()
+    {
+        var chatOptions = new ChatCompletionsOptions(appConfig.Value.OpenAIDeployment, followUpMessages);
+
+        var response = await openAIClient.GetChatCompletionsAsync(chatOptions);
+        var choice = response.Value.Choices.First();
+
+        if (choice.FinishReason == CompletionsFinishReason.Stopped)
+        {
+           followUpMessages.Add(new ChatRequestAssistantMessage(choice.Message.Content));
+        }
     }
 }
